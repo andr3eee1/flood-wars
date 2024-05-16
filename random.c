@@ -1,4 +1,8 @@
-//TODO: add the program header
+/*
+   Nume program   : alpha-q.c
+   Nume concurent : Pana Andrei, Paunescu Vlad
+   E-mail         : panaandreimihai@gmail.com, svsvpaunescu@gmail.com
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
