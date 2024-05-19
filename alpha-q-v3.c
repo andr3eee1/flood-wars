@@ -104,7 +104,7 @@ int isGameOver(char table[MAXN+2][MAXM+2],int n,int m){
         fill(ctable,l,c,'Z',-1);
       }
       c++;
-    }while(c<=m&&(frecvfill['X']+1)*(frecvfill['Y']+1)==2);
+    }while(c<=m&&frecvfill['X']+frecvfill['Y']!=1);
     l++;
   }
 
