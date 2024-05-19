@@ -36,18 +36,40 @@ int fill(char table[MAXN+2][MAXM+2],int l,int c,char f,char tf){
   table[l][c]=f;
   frecvfill[(int)table[l+1][c]]=frecvfill[(int)table[l-1][c]]=frecvfill[(int)table[l][c-1]]=frecvfill[(int)table[l][c+1]]=1;
 
-  if(table[l+1][c]==tf||(tf=='T'&&table[l+1][c]!='X'&&table[l+1][c]!='Y'&&table[l+1][c]!='Z'&&table[l+1][c]!=0)){
+  if(table[l+1][c]==tf||(tf==-1&&table[l+1][c]!='X'&&table[l+1][c]!='Y'&&table[l+1][c]!='Z'&&table[l+1][c]!=0)){
     rez+=fill(table,l+1,c,f,tf);
   }
-  if(table[l-1][c]==tf||(tf=='T'&&table[l-1][c]!='X'&&table[l-1][c]!='Y'&&table[l-1][c]!='Z'&&table[l-1][c]!=0)){
+  if(table[l-1][c]==tf||(tf==-1&&table[l-1][c]!='X'&&table[l-1][c]!='Y'&&table[l-1][c]!='Z'&&table[l-1][c]!=0)){
     rez+=fill(table,l-1,c,f,tf);
   }
-  if(table[l][c-1]==tf||(tf=='T'&&table[l][c-1]!='X'&&table[l][c-1]!='Y'&&table[l][c-1]!='Z'&&table[l][c-1]!=0)){
+  if(table[l][c-1]==tf||(tf==-1&&table[l][c-1]!='X'&&table[l][c-1]!='Y'&&table[l][c-1]!='Z'&&table[l][c-1]!=0)){
     rez+=fill(table,l,c-1,f,tf);
   }
-  if(table[l][c+1]==tf||(tf=='T'&&table[l][c+1]!='X'&&table[l][c+1]!='Y'&&table[l][c+1]!='Z'&&table[l][c+1]!=0)){
+  if(table[l][c+1]==tf||(tf==-1&&table[l][c+1]!='X'&&table[l][c+1]!='Y'&&table[l][c+1]!='Z'&&table[l][c+1]!=0)){
     rez+=fill(table,l,c+1,f,tf);
   }
+  return rez;
+}
+
+//schimba semnul numerelor peste care trece
+//returneazaz suma distantelor manhatten fata de pozitia (lfin,cfin)
+int distFill(char table[MAXN+2][MAXM+2],int l,int c,char tf,int lfin,int cfin){
+  int rez=abs_(l-lfin)+abs_(c-cfin);
+  table[l][c]=-table[l][c];
+
+  if(table[l-1][c]==tf){
+    rez+=distFill(table,l-1,c,tf,lfin,cfin);
+  }
+  if(table[l][c+1]==tf){
+    rez+=distFill(table,l,c+1,tf,lfin,cfin);
+  }
+  if(table[l+1][c]==tf){
+    rez+=distFill(table,l+1,c,tf,lfin,cfin);
+  }
+  if(table[l][c-1]==tf){
+    rez+=distFill(table,l,c-1,tf,lfin,cfin);
+  }
+
   return rez;
 }
 
@@ -79,10 +101,10 @@ int isGameOver(char table[MAXN+2][MAXM+2],int n,int m){
           frecvfill[(int)mut[i]]=0;
         }
         frecvfill['X']=frecvfill['Y']=frecvfill['Z']=0;
-        fill(ctable,l,c,'Z','T');
+        fill(ctable,l,c,'Z',-1);
       }
       c++;
-    }while(c<=m&&frecvfill['X']+frecvfill['Y']==1);
+    }while(c<=m&&frecvfill['X']+frecvfill['Y']!=1);
     l++;
   }
 
@@ -115,7 +137,7 @@ int getScore(char table[MAXN+2][MAXM+2],int n,int m){
           frecvfill[(int)mut[i]]=0;
         }
         frecvfill['X']=frecvfill['Y']=frecvfill['Z']=0;
-        pct=fill(ctable,l,c,'Z','T');
+        pct=fill(ctable,l,c,'Z',-1);
 
         if(frecvfill['X']==1&&frecvfill['Y']==0){
           pctj+=pct;
@@ -134,11 +156,33 @@ int getScore(char table[MAXN+2][MAXM+2],int n,int m){
   return pct;
 }
 
+int getDist(char table[MAXN+2][MAXM+2],int n,int m){
+  int distj,dists,dist;
+  //evaluare dupa pozitionarea fata de coltul jucatorilor
+  distj=distFill(table,n,1,table[n][1],1,m);
+  distFill(table,n,1,table[n][1],1,m);
+  dists=distFill(table,1,m,table[1][m],n,1);
+  distFill(table,1,m,table[1][m],n,1);
+
+  //diferenta este inversata, pentru ca o distanta mai mica este mai buna
+  dist=dists-distj;
+  if(juc=='S'){
+    dist=distj-dists;
+  }
+
+  return dist;
+}
+
+#define SPOND ((MAXN+MAXM-2)*MAXN*MAXM+1)
+
 int evalStatic(char table[MAXN+2][MAXM+2],int n,int m){
   int score=0;
 
   //evaluare dupa punctaj
-  score+=getScore(table,n,m);
+  score+=getScore(table,n,m) * SPOND;
+
+  //evaluare dupa pozitionarea fata de coltul jucatorilor
+  score+=getDist(table,n,m);
 
   return score;
 }
