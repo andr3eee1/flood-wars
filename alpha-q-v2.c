@@ -13,6 +13,8 @@
 #define INFINIT 2147483647
 
 char mat[MAXN+2][MAXM+2];
+int dist[MAXN+2][MAXN+2];
+int coada2[MAXN*2+2];
 char juc;
 
 char mut[]={'@','#','+','.','*'};
@@ -76,7 +78,58 @@ int isGameOver(char table[MAXN+2][MAXM+2],int n,int m){
 
   return (l==n+1);
 }
-
+int distelem(int ls,int cs,int n,int m, int d){
+  int i,l,c,elem,e2;
+  int coada[2*MAXN+2][2];
+  int coada2[2*MAXN+2][2];
+  elem=1;
+  coada[1][0]=ls;
+  coada[1][1]=cs;
+  for(l=1;l<=n;l++){
+    for(c=1;c<=m;c++){
+      dist[l][c]=-1;
+    }
+  }
+  dist[ls][cs]=d;
+  d++;
+  while(elem>0){
+    e2=0;
+    for(i=1;i<=elem;i++){
+      l=coada[i][0];
+      c=coada[i][1];
+      if(dist[l+1][c]==-1){
+        e2++;
+        coada2[e2][0]=l+1;
+        coada2[e2][1]=c;
+        dist[l+1][c]=d;
+      }
+      if(dist[l-1][c]==-1){
+        e2++;
+        coada2[e2][0]=l-1;
+        coada2[e2][1]=c;
+        dist[l-1][c]=d;
+      }
+      if(dist[l][c-1]==-1){
+        e2++;
+        coada2[e2][0]=l;
+        coada2[e2][1]=c-1;
+        dist[l][c-1]=d;
+      }
+      if(dist[l][c+1]==-1){
+        e2++;
+        coada2[e2][0]=l;
+        coada2[e2][1]=c+1;
+        dist[l][c+1]=d;
+      }
+    }
+    for(i=1;i<=e2;i++){
+      coada[i][0]=coada2[i][0];
+      coada[i][1]=coada2[i][1];
+    }
+    elem=e2;
+    d++;
+  }
+}
 int getScore(char table[MAXN+2][MAXM+2],int n,int m){
   char ctable[MAXN+2][MAXM+2];
   int l,c,i,pctj,pcts,pct;
@@ -186,8 +239,8 @@ int main(){
   }
   n--;
   m--;
+  distelem(4,2,n,m,1);
   // printf("%d %d\n",n,m);
-
   chjuc=mat[n][1];
   ljuc=n;
   cjuc=1;
@@ -232,3 +285,13 @@ int main(){
 
   return 0;
 }
+/*
+J
+.#+#.*.@.@
+@.+*@.+*#+
+**#++@**#@
+#@#@.@@+@#
+++@++@#.@.
+**##*@*#++
+#@@*.+*.*+
+*/
