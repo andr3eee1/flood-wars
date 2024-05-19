@@ -51,6 +51,28 @@ int fill(char table[MAXN+2][MAXM+2],int l,int c,char f,char tf){
   return rez;
 }
 
+//schimba semnul numerelor peste care trece
+//returneazaz suma distantelor manhatten fata de pozitia (lfin,cfin)
+int distFill(char table[MAXN+2][MAXM+2],int l,int c,char tf,int lfin,int cfin){
+  int rez=abs_(l-lfin)+abs_(c-cfin);
+  table[l][c]=-table[l][c];
+
+  if(table[l-1][c]==tf){
+    rez+=distFill(table,l-1,c,tf,lfin,cfin);
+  }
+  if(table[l][c+1]==tf){
+    rez+=distFill(table,l,c+1,tf,lfin,cfin);
+  }
+  if(table[l+1][c]==tf){
+    rez+=distFill(table,l+1,c,tf,lfin,cfin);
+  }
+  if(table[l][c-1]==tf){
+    rez+=distFill(table,l,c-1,tf,lfin,cfin);
+  }
+
+  return rez;
+}
+
 int isGameOver(char table[MAXN+2][MAXM+2],int n,int m){
   char ctable[MAXN+2][MAXM+2];
   int l,c,i;
@@ -134,11 +156,33 @@ int getScore(char table[MAXN+2][MAXM+2],int n,int m){
   return pct;
 }
 
+int getDist(char table[MAXN+2][MAXM+2],int n,int m){
+  int distj,dists,dist;
+  //evaluare dupa pozitionarea fata de coltul jucatorilor
+  distj=distFill(table,n,1,table[n][1],1,m);
+  distFill(table,n,1,table[n][1],1,m);
+  dists=distFill(table,1,m,table[1][m],n,1);
+  distFill(table,1,m,table[1][m],n,1);
+
+  //diferenta este inversata, pentru ca o distanta mai mica este mai buna
+  dist=dists-distj;
+  if(juc=='S'){
+    dist=distj-dists;
+  }
+
+  return dist;
+}
+
+#define SPOND ((MAXN+MAXM-2)*MAXN*MAXM+1)
+
 int evalStatic(char table[MAXN+2][MAXM+2],int n,int m){
   int score=0;
 
   //evaluare dupa punctaj
-  score+=getScore(table,n,m);
+  score+=getScore(table,n,m) * SPOND;
+
+  //evaluare dupa pozitionarea fata de coltul jucatorilor
+  score+=getDist(table,n,m);
 
   return score;
 }

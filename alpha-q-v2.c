@@ -10,10 +10,10 @@
 #define MAXN 50
 #define MAXM 50
 #define INFINIT 2147483647
+#define MAXDEPTH 8
 
 char mat[MAXN+2][MAXM+2];
-int dist[MAXN+2][MAXN+2];
-char juc;
+char juc,mutch;
 
 char mut[]={'@','#','+','.','*'};
 
@@ -89,79 +89,6 @@ int isGameOver(char table[MAXN+2][MAXM+2],int n,int m){
   return (l==n+1);
 }
 
-//calculeaza distanta(manhatten) de la pozitia (ls,cs) la toate pozitiile
-//trebuie ca parametrul rez[][] sa aiba deja -1 pe toate pozitiile
-void distelem(int ls,int cs,int d,int rez[MAXN+2][MAXN+2]){
-  int i,l,c,elem,e2;
-  int coada[2*MAXN+2][2];
-  int coada2[2*MAXN+2][2];
-
-  coada[1][0]=ls;
-  coada[1][1]=cs;
-  rez[ls][cs]=d;
-  d++;
-  elem=1;
-  while(elem>0){
-    e2=0;
-    for(i=1;i<=elem;i++){
-      l=coada[i][0];
-      c=coada[i][1];
-      if(rez[l+1][c]==-1){
-        e2++;
-        coada2[e2][0]=l+1;
-        coada2[e2][1]=c;
-        rez[l+1][c]=d;
-      }
-      if(rez[l-1][c]==-1){
-        e2++;
-        coada2[e2][0]=l-1;
-        coada2[e2][1]=c;
-        rez[l-1][c]=d;
-      }
-      if(rez[l][c-1]==-1){
-        e2++;
-        coada2[e2][0]=l;
-        coada2[e2][1]=c-1;
-        rez[l][c-1]=d;
-      }
-      if(rez[l][c+1]==-1){
-        e2++;
-        coada2[e2][0]=l;
-        coada2[e2][1]=c+1;
-        rez[l][c+1]=d;
-      }
-    }
-    for(i=1;i<=e2;i++){
-      coada[i][0]=coada2[i][0];
-      coada[i][1]=coada2[i][1];
-    }
-    elem=e2;
-    d++;
-  }
-}
-
-//schimba semnul numerelor peste care trece
-//returneazaz suma distantelor manhatten fata de pozitia (lfin,cfin)
-int distFill(char table[MAXN+2][MAXM+2],int l,int c,char tf,int lfin,int cfin){
-  int rez=abs_(l-lfin)+abs_(c-cfin);
-  table[l][c]=-table[l][c];
-
-  if(table[l-1][c]==tf){
-    rez+=distFill(table,l-1,c,tf,lfin,cfin);
-  }
-  if(table[l][c+1]==tf){
-    rez+=distFill(table,l,c+1,tf,lfin,cfin);
-  }
-  if(table[l+1][c]==tf){
-    rez+=distFill(table,l+1,c,tf,lfin,cfin);
-  }
-  if(table[l][c-1]==tf){
-    rez+=distFill(table,l,c-1,tf,lfin,cfin);
-  }
-
-  return rez;
-}
-
 int getScore(char table[MAXN+2][MAXM+2],int n,int m){
   char ctable[MAXN+2][MAXM+2];
   int l,c,i,pctj,pcts,pct;
@@ -207,68 +134,73 @@ int getScore(char table[MAXN+2][MAXM+2],int n,int m){
   return pct;
 }
 
-int getDist(char table[MAXN+2][MAXM+2],int n,int m){
-  int distj,dists,dist;
-  //evaluare dupa pozitionarea fata de coltul jucatorilor
-  distj=distFill(table,n,1,table[n][1],1,m);
-  distFill(table,n,1,table[n][1],1,m);
-  dists=distFill(table,1,m,table[1][m],n,1);
-  distFill(table,1,m,table[1][m],n,1);
-
-  //diferenta este inversata, pentru ca o distanta mai mica este mai buna
-  dist=dists-distj;
-  if(juc=='S'){
-    dist=distj-dists;
-  }
-
-  return dist;
-}
-
-#define SPOND ((MAXN+MAXM-2)*MAXN*MAXM+1)
-
 int evalStatic(char table[MAXN+2][MAXM+2],int n,int m){
   int score=0;
 
   //evaluare dupa punctaj
-  score+=getScore(table,n,m) * SPOND;
-
-  //evaluare dupa pozitionarea fata de coltul jucatorilor
-  score+=getDist(table,n,m);
+  score+=getScore(table,n,m);
 
   return score;
 }
 
-int negamax(char table[MAXN+2][MAXM+2],int n,int m,int depth,int alpha,int beta,int player,int jucl,int jucc){
-  int i,val,l,c;
+int alphaBeta(char table[MAXN+2][MAXM+2],int n,int m,int depth,int alpha,int beta,int player,int jucl,int jucc){
+  int i,val,l,c,p;
   char ctable[MAXN+2][MAXM+2];
   if(depth==0||isGameOver(table,n,m)){
-    return player*evalStatic(table,n,m);
+    return evalStatic(table,n,m);
   }
 
-  val=-INFINIT;
-  i=0;
-  while(i<5&&alpha<beta){
-    if(mut[i]!=table[n][1]&&mut[i]!=table[1][m]){
-      for(l=0;l<=n+1;l++){
-        for(c=0;c<=m+1;c++){
-          ctable[l][c]=table[l][c];
+  if(player==1){
+    val=-INFINIT;
+    for(i=0;i<5;i++){
+      if(mut[i]!=table[n][1]&&mut[i]!=table[1][m]){
+        for(l=0;l<=n+1;l++){
+          for(c=0;c<=m+1;c++){
+            ctable[l][c]=table[l][c];
+          }
+        }
+        fill(ctable,jucl,jucc,mut[i],ctable[jucl][jucc]); 
+
+        p=alphaBeta(ctable,n,m,depth-1,alpha,beta,1-player,(jucl==1?n:1),(jucc==1?m:1));
+        if(p>val){
+          val=p;
+          if(depth==MAXDEPTH){
+            mutch=mut[i];
+          }
+        }
+        alpha=max(alpha,val);
+        if(val>=beta){
+          break;
         }
       }
-      fill(ctable,jucl,jucc,mut[i],ctable[jucl][jucc]);
-
-      val=max(val,-negamax(ctable,n,m,depth-1,-beta,-alpha,-player,(jucl==1?n:1),(jucc==1?m:1)));
-      alpha=max(alpha,val);
     }
-    i++;
-  }
+    return val;
+  }else{
+    val=INFINIT;
+    for(i=0;i<5;i++){
+      if(mut[i]!=table[n][1]&&mut[i]!=table[1][m]){
+        for(l=0;l<=n+1;l++){
+          for(c=0;c<=m+1;c++){
+            ctable[l][c]=table[l][c];
+          }
+        }
+        fill(ctable,jucl,jucc,mut[i],ctable[jucl][jucc]); 
 
-  return val;
+        p=alphaBeta(ctable,n,m,depth-1,alpha,beta,1-player,(jucl==1?n:1),(jucc==1?m:1));
+        val=min(val,p);
+        beta=min(beta,val);
+        if(val<=alpha){
+          break;
+        }
+      }
+    }
+    return val;
+  }
 }
 
 int main(){
-  int n,m,l,c,ljuc,cjuc,p,mutch,i,val;
+  int n,m,l,c,ljuc,cjuc;
   char ch,chjuc;
-  char ctable[MAXN+2][MAXM+2];
 
   juc=fgetc(stdin);
   fgetc(stdin);//'\n'
@@ -297,23 +229,7 @@ int main(){
   }
 
   mutch='D';
-  val=-INFINIT;
-  for(i=0;i<5;i++){
-    if(mut[i]!=mat[n][1]&&mut[i]!=mat[1][m]){
-      for(l=0;l<=n+1;l++){
-        for(c=0;c<=m+1;c++){
-          ctable[l][c]=mat[l][c];
-        }
-      }
-      fill(ctable,ljuc,cjuc,mut[i],ctable[ljuc][cjuc]);
-
-      p=negamax(ctable,n,m,6,-INFINIT,INFINIT,1,ljuc,cjuc);
-      if(p>val){
-        val=p;
-        mutch=mut[i];
-      }
-    }
-  }
+  alphaBeta(mat,n,m,MAXDEPTH,-INFINIT,INFINIT,1,ljuc,cjuc);
   fill(mat,ljuc,cjuc,mutch,chjuc);
 
   if(juc=='J'){
