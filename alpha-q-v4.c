@@ -6,16 +6,31 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
 
 #define MAXN 50
 #define MAXM 50
 #define INFINIT 2147483647
-#define MAXDEPTH 8
+#define MAXDEPTH 30
+#define MAXTIME 900000 // 0.90 sec
+
+struct timeval tv;
+int cont;
+long long tbase;
+int maxdepth;
+
+int killer[MAXDEPTH]; // killer moves
+
+// timpul curent in microsecunde (milionime de secunda)
+static inline long long checktime() {
+  gettimeofday(&tv, NULL);
+  return ((long long)tv.tv_sec) * 1000000 + tv.tv_usec;
+}
 
 char mat[MAXN+2][MAXM+2];
 char juc,mutch;
 
-char mut[]={'@','#','+','.','*'};
+char mut[]={'@','#','+','*','.'};
 
 char frecvfill[127];
 
@@ -73,44 +88,6 @@ int distFill(char table[MAXN+2][MAXM+2],int l,int c,char tf,int lfin,int cfin){
   return rez;
 }
 
-int isGameOver(char table[MAXN+2][MAXM+2],int n,int m){
-  char ctable[MAXN+2][MAXM+2];
-  int l,c,i;
-
-  //copiez tabla in ctable
-  for(l=0;l<=n+1;l++){
-    for(c=0;c<=m+1;c++){
-      ctable[l][c]=table[l][c];
-    }
-  }
-
-  fill(ctable,n,1,'X',ctable[n][1]);
-  fill(ctable,1,m,'Y',ctable[1][m]);
-  for(i=0;i<5;i++){
-    frecvfill[(int)mut[i]]=0;
-  }
-  frecvfill['X']=frecvfill['Y']=frecvfill['Z']=0;
-
-  c=m+1;
-  l=1;
-  while(l<=n&&c==m+1){
-    c=1;
-    do{
-      if(ctable[l][c]!='X'&&ctable[l][c]!='Y'&&ctable[l][c]!='Z'){
-        for(i=0;i<5;i++){
-          frecvfill[(int)mut[i]]=0;
-        }
-        frecvfill['X']=frecvfill['Y']=frecvfill['Z']=0;
-        fill(ctable,l,c,'Z',-1);
-      }
-      c++;
-    }while(c<=m&&frecvfill['X']+frecvfill['Y']!=1);
-    l++;
-  }
-
-  return (l==n+1);
-}
-
 int getScore(char table[MAXN+2][MAXM+2],int n,int m){
   char ctable[MAXN+2][MAXM+2];
   int l,c,i,pctj,pcts,pct;
@@ -124,6 +101,7 @@ int getScore(char table[MAXN+2][MAXM+2],int n,int m){
 
   pctj=fill(ctable,n,1,'X',ctable[n][1]);
   pcts=fill(ctable,1,m,'Y',ctable[1][m]);
+  // printf("Score init: %d %d\n",pctj,pcts);
 
   for(i=0;i<5;i++){
     frecvfill[(int)mut[i]]=0;
@@ -138,6 +116,13 @@ int getScore(char table[MAXN+2][MAXM+2],int n,int m){
         }
         frecvfill['X']=frecvfill['Y']=frecvfill['Z']=0;
         pct=fill(ctable,l,c,'Z',-1);
+        // for(int l1=1;l1<=n;l1++){
+        //   for(int c1=1;c1<=m;c1++){
+        //     printf("%c",ctable[l1][c1]);
+        //   }
+        //   printf("\n");
+        // }
+        // printf("\n");
 
         if(frecvfill['X']==1&&frecvfill['Y']==0){
           pctj+=pct;
@@ -148,12 +133,9 @@ int getScore(char table[MAXN+2][MAXM+2],int n,int m){
     }
   }
 
-  pct=pctj-pcts;
-  if(juc=='S'){
-    pct=pcts-pctj;
-  }
+  // printf("Score: %d %d\n",pctj,pcts);
 
-  return pct;
+  return pctj-pcts;
 }
 
 int getDist(char table[MAXN+2][MAXM+2],int n,int m){
@@ -173,77 +155,82 @@ int getDist(char table[MAXN+2][MAXM+2],int n,int m){
   return dist;
 }
 
-#define SPOND ((MAXN+MAXM-2)*MAXN*MAXM+1)
-
 int evalStatic(char table[MAXN+2][MAXM+2],int n,int m){
   int score=0;
 
   //evaluare dupa punctaj
-  score+=getScore(table,n,m) * SPOND;
+  score+=getScore(table,n,m);
 
   //evaluare dupa pozitionarea fata de coltul jucatorilor
-  score+=getDist(table,n,m);
+  // score+=getDist(table,n,m);
+
+  // printf("Score: %d\n",score);
+  // for(int l=1;l<=n;l++){
+  //   for(int c=1;c<=m;c++){
+  //     printf("%c",table[l][c]);
+  //   }
+  //   printf("\n");
+  // }
+  // printf("\n");
 
   return score;
 }
 
-int alphaBeta(char table[MAXN+2][MAXM+2],int n,int m,int depth,int alpha,int beta,int player,int jucl,int jucc){
-  int i,val,l,c,p;
+int negamax(int depth,char table[MAXN+2][MAXM+2],int n,int m,int alpha,int beta,int jucl,int jucc){
+  int icolor,score,l,c;
   char ctable[MAXN+2][MAXM+2];
-  if(depth==0||isGameOver(table,n,m)){
-    return evalStatic(table,n,m);
+
+  if(maxdepth-depth==5){
+    cont=((checktime()-tbase)<MAXTIME);
   }
 
-  if(player==1){
-    val=-INFINIT;
-    for(i=0;i<5;i++){
-      if(mut[i]!=table[n][1]&&mut[i]!=table[1][m]){
-        for(l=0;l<=n+1;l++){
-          for(c=0;c<=m+1;c++){
-            ctable[l][c]=table[l][c];
-          }
-        }
-        fill(ctable,jucl,jucc,mut[i],ctable[jucl][jucc]); 
-
-        p=alphaBeta(ctable,n,m,depth-1,alpha,beta,1-player,(jucl==1?n:1),(jucc==1?m:1));
-        if(p>val){
-          val=p;
-          if(depth==MAXDEPTH){
-            mutch=mut[i];
-          }
-        }
-        alpha=max(alpha,val);
-        if(val>=beta){
-          break;
-        }
-      }
-    }
-    return val;
-  }else{
-    val=INFINIT;
-    for(i=0;i<5;i++){
-      if(mut[i]!=table[n][1]&&mut[i]!=table[1][m]){
-        for(l=0;l<=n+1;l++){
-          for(c=0;c<=m+1;c++){
-            ctable[l][c]=table[l][c];
-          }
-        }
-        fill(ctable,jucl,jucc,mut[i],ctable[jucl][jucc]); 
-
-        p=alphaBeta(ctable,n,m,depth-1,alpha,beta,1-player,(jucl==1?n:1),(jucc==1?m:1));
-        val=min(val,p);
-        beta=min(beta,val);
-        if(val<=alpha){
-          break;
-        }
-      }
-    }
-    return val;
+  if(cont&&depth==maxdepth){
+    return (((depth+(1-(juc=='J'?0:1)))&1)*2-1)*evalStatic(table,n,m);
   }
+
+  if(cont&&killer[depth]>=0){
+    icolor=killer[depth];
+    if(mut[icolor]!=table[n][1]&&mut[icolor]!=table[1][m]){
+      for(l=0;l<=n+1;l++){
+        for(c=0;c<=m+1;c++){
+          ctable[l][c]=table[l][c];
+        }
+      }
+      fill(ctable,jucl,jucc,mut[icolor],ctable[jucl][jucc]);
+
+      score=-negamax(depth+1,ctable,n,m,-beta,-alpha,(jucl==1?n:1),(jucc==1?m:1));
+
+      if(score>alpha){
+        alpha=score;
+      }
+    }
+  }
+
+  icolor=0;
+  while(cont&&alpha<beta&&icolor<5){
+    if(icolor!=killer[depth]&&mut[icolor]!=table[n][1]&&mut[icolor]!=table[1][m]){
+      for(l=0;l<=n+1;l++){
+        for(c=0;c<=m+1;c++){
+          ctable[l][c]=table[l][c];
+        }
+      }
+      fill(ctable,jucl,jucc,mut[icolor],ctable[jucl][jucc]);
+
+      score=-negamax(depth+1,ctable,n,m,-beta,-alpha,(jucl==1?n:1),(jucc==1?m:1));
+
+      if(score>alpha){
+        alpha=score;
+        killer[depth]=icolor;
+      }
+    }
+    icolor++;
+  }
+
+  return alpha<beta?alpha:beta;
 }
 
 int main(){
-  int n,m,l,c,ljuc,cjuc;
+  int n,m,l,c,ljuc,cjuc,maxicolor;
   char ch,chjuc;
 
   juc=fgetc(stdin);
@@ -272,9 +259,22 @@ int main(){
     cjuc=m;
   }
 
-  mutch='D';
-  alphaBeta(mat,n,m,MAXDEPTH,-INFINIT,INFINIT,1,ljuc,cjuc);
-  fill(mat,ljuc,cjuc,mutch,chjuc);
+  for(l=0;l<MAXDEPTH;l++){
+    killer[l]=-1;
+  }
+  tbase=checktime();
+
+  maxicolor=100;//ceva fictional, pentru debug
+  cont=maxdepth=1;
+  while((checktime()-tbase)<MAXTIME&&maxdepth<=MAXDEPTH){
+    negamax(0,mat,n,m,-INFINIT,INFINIT,ljuc,cjuc);
+    maxdepth++;
+    if(cont){
+      maxicolor=killer[0];
+    }
+  }
+  // printf("%d %d\n",maxicolor,maxdepth);
+  fill(mat,ljuc,cjuc,mut[maxicolor],chjuc);
 
   if(juc=='J'){
     fputc('S',stdout);
